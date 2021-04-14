@@ -3,12 +3,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+class FeedForwardLayer(nn.Module):
+    def __init__(self):
+        super(FeedForwardLayer, self).__init__()
+        self.model = nn.Sequential(
+            nn.Linear(in_features=, out_fearutes=),
+            nn.ReLU(inplace=True),
+            nn.Linear(in_features=, out_fearutes=)
+            )
+
+    def forward(self, x):
+        raise NotImplementedError
+
+
 class DilationCNN(nn.Module):
     def __init__(self):
         super(DilationCNN, self).__init__()
-        self.noicy_freq = 512
-        self.refer_freq = 64
-        self.input_freq = self.noicy_freq + self.refer_freq
         self.model = nn.Sequential(
             nn.Conv2d(in_channels=1, out_channels=64, kernel_size=5, padding=(2, 2), dilation=(1, 1)),
             nn.ReLU(inplace=True),
@@ -40,7 +50,7 @@ class SelfAttention(nn.Module):
         '''
         Scaled Dot-Product Attention
         '''
-        Q_K = torch.matmul(query, keys.transpose({DIM1}, {DIM2})) / torch.sqrt(self.channel_dim)
+        Q_K = torch.matmul(query, keys.transpose(2, 3)) / torch.sqrt(self.channel_dim)
         out = torch.matmul(F.Softmax(Q_K, dim={DIM}), values)
         return out
 
@@ -55,8 +65,11 @@ class SelfAttention(nn.Module):
 class MultiHeadAttention(nn.Module):
     def __init__(self, att_dim=64, num_heads=2):
         super(MultiHeadAttention, self).__init__()
+        # Multi-Head Attention parameters:
         self.att_dim = att_dim
         self.num_heads = num_heads
+        # Dilation CNN:
+        self.dilation_cnn = DilationCNN()
         # to get Q, K, V:
         self.conv_query = nn.Conv2d(64, self.att_dim, kernel_size=1, bias=False)
         self.conv_keys = nn.Conv2d(64, self.att_dim, kernel_size=1, bias=False)
@@ -68,7 +81,9 @@ class MultiHeadAttention(nn.Module):
         # multi-head:
         self.multi_head_conv = nn.Conv2d(self.att_dim * self.num_heads, self.att_dim * self.num_heads, kernel_size=3, padding=1)
 
-    def forward(self, x):
+    def forward(self, refer_emb, noicy_spec):
+        x = torch.cat([refer_emb, noicy_spec], dim=2)
+        x = self.dilation_cnn(x)
         # get Q, K, V:
         query = self.conv_query(x)
         keys = self.conv_keys(x)
@@ -77,35 +92,7 @@ class MultiHeadAttention(nn.Module):
         head_outs = []
         for head_idx in range(self.num_heads):
             head_outs.append(self.attention_heads[head_idx])
-        out = self.multi_head_conv(torch.cat(head_outs, dim={DIM}))
+        out = self.multi_head_conv(torch.cat(head_outs, dim=1))
         return out
 
-
-
-    
-        
-
-
-
-
-class TemporalAttentionModule(nn.Module):
-    def __init__(self):
-        super(TemporalAttention, self).__init__()
-        self.dilated_cnn = DilationCNN()
-        self.layer_norm = nn.LayerNorm({{CH_SHAPE}, {FREQ_SHAPE}, {TIME_SHAPE}})
-        # Multi-Head Attention:
-        
-        
-        
-
-    
-
-    
-
-    def _separate_
-
-    def forward(self, x):
-        x = self.dilated_cnn(x)
-        
-        out = self._attention(query, keys, values)
 

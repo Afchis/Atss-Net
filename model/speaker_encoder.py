@@ -21,6 +21,7 @@ class ResudialBlock(nn.Module):
 class SpeakerEncoder(nn.Module):
     def __init__(self, num_speakers):
         super(SpeakerEncoder, self).__init__()
+        self.num_speakers = num_speakers
         self.resnet18 = nn.Sequential(
             ResudialBlock(in_channel=1, out_channel=16, kernel_size=3, padding=1),
             ResudialBlock(in_channel=16, out_channel=32, kernel_size=3, padding=1),
@@ -28,7 +29,7 @@ class SpeakerEncoder(nn.Module):
             ResudialBlock(in_channel=64, out_channel=128, kernel_size=3, padding=1)
             )
         self.fc1 = nn.Linear(in_features=256, out_features=64) # out_features --> must be equal dimension of the frequency bins
-        self.fc2 = nn.Linear(in_features=64, out_features=num_speakers) # not use for inference
+        self.fc2 = nn.Linear(in_features=64, out_features=self.num_speakers) # not use for inference
 
     def _pool_layer(self, x):
         '''
@@ -45,7 +46,8 @@ class SpeakerEncoder(nn.Module):
         ''' 
         out = self.resnet18(x) # shape --> [batch, 128, freq, time]
         out = self._pool_layer(out) # shape --> [batch, 256]
-        out = self.fc1(out)
+        out = self.fc1(out) # shape --> [batch, 64]
         if self.train:
-            out = self.fc2(out)
+            out = self.fc2(out) # shape --> [batch, self.num_speakers]
         return out
+
