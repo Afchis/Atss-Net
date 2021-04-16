@@ -9,26 +9,30 @@ class TemporalResudialBlock(nn.Module):
     def __init__(self, block_idx):
         super(TemporalResudialBlock, self).__init__()
         if block_idx == 0:
-            self.layer_norm = nn.LayerNorm([1, 513, 301])
+            self.layer_norm = nn.LayerNorm([1, 513])
         else:
-            self.layer_norm = nn.LayerNorm([64, 513, 301])
+            self.layer_norm = nn.LayerNorm([64, 513])
         self.model = MultiHeadAttention(block_idx, att_dim=64, num_heads=2)
 
     def forward(self, x, refer_emb):
-        out = self.layer_norm(x)
-        out = self.model(x, refer_emb)
+        out = x.permute(0, 3, 1, 2)
+        out = self.layer_norm(out)
+        out = out.permute(0, 2, 3, 1)
+        out = self.model(out, refer_emb)
         return out + x
 
 
 class FeedForwardResudialBlock(nn.Module):
     def __init__(self):
         super(FeedForwardResudialBlock, self).__init__()
-        self.layer_norm = nn.LayerNorm([64, 513, 301])
+        self.layer_norm = nn.LayerNorm([64, 513])
         self.model = FeedForwardLayer(in_features=64)
 
     def forward(self, x):
-        out = self.layer_norm(x)
-        out = self.model(x)
+        out = x.permute(0, 3, 1, 2)
+        out = self.layer_norm(out)
+        out = out.permute(0, 2, 3, 1)
+        out = self.model(out)
         return out
 
 

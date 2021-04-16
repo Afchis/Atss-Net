@@ -17,7 +17,7 @@ from dataloader.dataloader import Loader
 parser = argparse.ArgumentParser()
 
 parser.add_argument("--tb", type=str, default="None", help="Tensorboard name")
-parser.add_argument("--lr", type=float, default=0.002)
+parser.add_argument("--lr", type=float, default=0.0001)
 parser.add_argument("--resume", type=bool, default=False)
 parser.add_argument("--weights", type=str, default="None")
 
@@ -42,6 +42,15 @@ if args.resume is True:
 
 def save_model(epoch):
     torch.save(model.state_dict(), "ignore/weights/checkpoints/checkpoint%i.pth" % epoch)
+
+# model_part = model.model[1].tem_res_block.layer_norm
+# print(model_part)
+# print(sum(p.numel() for p in model_part.parameters()))
+# quit()
+# print(model)
+# print(sum(p.numel() for p in model.parameters()))
+# quit()
+
 
 
 # init dataloader
