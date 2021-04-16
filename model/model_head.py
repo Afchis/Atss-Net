@@ -68,6 +68,7 @@ class AtssNet(nn.Module):
         refer_spec.shape --> [batch, 1, refer_freq, time]
         noicy_spec.shape --> [batch, 1, noicy_freq, time]
         '''
+        noicy_spec = x
         with torch.no_grad():
             d_vec = list()
             for batch in refer_spec:
@@ -85,5 +86,5 @@ class AtssNet(nn.Module):
                 x = self.model[block_idx](x, d_vec)
         out = self.final_transform(x)
         out = self.sigmoid(out)
-        return out
+        return out*noicy_spec
 
