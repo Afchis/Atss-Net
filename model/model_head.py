@@ -1,8 +1,8 @@
 import torch
 import torch.nn as nn
 
-from model_parts import MultiHeadAttention, FeedForwardLayer
-from speaker_encoder import SpeakerEncoder
+from .model_parts import MultiHeadAttention, FeedForwardLayer
+from .speaker_encoders.speaker_encoder import SpeakerEncoder
 
 
 class TemporalResudialBlock(nn.Module):
@@ -47,7 +47,7 @@ class AtssNetBlock(nn.Module):
 class AtssNet(nn.Module):
     def __init__(self, num_blocks=3):
         super(AtssNet, self).__init__()
-        self.refer_encoder = SpeakerEncoder(num_speakers=999)
+        self.refer_encoder = SpeakerEncoder(num_speakers=921)
         self.refer_encoder.train = False
         self.num_blocks = num_blocks
         self.model = nn.ModuleList()
