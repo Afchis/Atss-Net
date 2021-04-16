@@ -53,9 +53,9 @@ class SelfAttention(nn.Module):
     def __init__(self, att_dim=64):
         super(SelfAttention, self).__init__()
         self.att_dim = att_dim
-        self.conv_query = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=False)
-        self.conv_keys = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=False)
-        self.conv_values = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=False)
+        self.conv_query = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=True)
+        self.conv_keys = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=True)
+        self.conv_values = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=True)
 
     def _attention(self, query, keys, values):
         '''
@@ -82,9 +82,9 @@ class MultiHeadAttention(nn.Module):
         # Dilation CNN:
         self.dilation_cnn = DilationCNN(block_idx)
         # to get Q, K, V:
-        self.conv_query = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=False)
-        self.conv_keys = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=False)
-        self.conv_values = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=False)
+        self.conv_query = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=True)
+        self.conv_keys = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=True)
+        self.conv_values = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=True)
         # list of attention heads:
         self.attention_heads = nn.ModuleList()
         for i in range(self.num_heads):
