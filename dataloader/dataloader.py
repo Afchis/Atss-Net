@@ -2,14 +2,14 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 
-from utils.get_audio import GetAudio
+from utils.get_audio_VF import GetAudio
 
 
 class LibriSpeech300_train(Dataset):
-    def __init__(self, epoch_len=50000):
+    def __init__(self, epoch_len=100):
         super().__init__()
         self.epoch_len = epoch_len
-        self.data_path = "/workspace/db/audio/Libri/LibriSpeech/train-clean-360/"
+        self.data_path = "/workspace/db/audio/Libri/LibriSmall/" #Speech/train-clean-360/"
         self.get_audio = GetAudio(self.data_path)
         self.trans = transforms.ToTensor()
 

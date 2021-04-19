@@ -41,7 +41,7 @@ class DilationCNN(nn.Module):
             nn.ReLU(inplace=True),
             nn.Conv2d(in_channels=64, out_channels=64, kernel_size=5, padding=(32, 2), dilation=(16, 1)),
             nn.ReLU(inplace=True),
-            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1, padding=0, dilation=0),
+            nn.Conv2d(in_channels=64, out_channels=64, kernel_size=1, padding=0, dilation=1),
             nn.ReLU(inplace=True),
             )
 
@@ -82,15 +82,15 @@ class MultiHeadAttention(nn.Module):
         # Dilation CNN:
         self.dilation_cnn = DilationCNN(block_idx)
         # to get Q, K, V:
-        self.conv_query = nn.Conv2d(576, self.att_dim, kernel_size=1, bias=False)
-        self.conv_keys = nn.Conv2d(576, self.att_dim, kernel_size=1, bias=False)
-        self.conv_values = nn.Conv2d(576, self.att_dim, kernel_size=1, bias=False)
+        self.conv_query = nn.Conv2d(577, self.att_dim, kernel_size=1, bias=False)
+        self.conv_keys = nn.Conv2d(577, self.att_dim, kernel_size=1, bias=False)
+        self.conv_values = nn.Conv2d(577, self.att_dim, kernel_size=1, bias=False)
         # list of attention heads:
         self.attention_heads = nn.ModuleList()
         for i in range(self.num_heads):
             self.attention_heads.append(SelfAttention(att_dim=self.att_dim))
         # multi-head:
-        self.multi_head_conv = nn.Conv2d(self.att_dim * self.num_heads, 512, kernel_size=3, padding=1)
+        self.multi_head_conv = nn.Conv2d(self.att_dim * self.num_heads, 513, kernel_size=3, padding=1)
 
     def forward(self, x, refer_emb):
         x = torch.cat([x, refer_emb], dim=2)
