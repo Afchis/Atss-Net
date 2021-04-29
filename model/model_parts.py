@@ -53,25 +53,31 @@ class SelfAttention(nn.Module):
     def __init__(self, att_dim=64):
         super(SelfAttention, self).__init__()
         self.att_dim = att_dim
-        self.conv_query = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=False)
-        self.conv_keys = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=False)
-        self.conv_values = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=False)
+        self.conv_query = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=False)
+        self.conv_keys = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=False)
+        self.conv_values = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=False)
 
     def _attention(self, query, keys, values):
         '''
         Scaled Dot-Product Attention
+        : inputs shape --> [batch, freq, ch, time]
         '''
-        Q_K = torch.matmul(query, keys.transpose(2, 3)) / math.sqrt(self.att_dim)
-        out = torch.matmul(F.softmax(Q_K, dim=1), values)
+        batch, freq, ch, time = query.size()
+        query = query.permute(1, 0, 2, 3).reshape(freq, batch, ch*time) # shape --> [freq, batch, ch*time]
+        keys = keys.permute(1, 0, 2, 3).reshape(freq, batch, ch*time) # shape --> [freq, batch, ch*time]
+        values = values.permute(1, 0, 2, 3).reshape(freq, batch, ch*time) # shape --> [freq, batch, ch*time]
+        Q_K = torch.matmul(query, keys.transpose(1, 2)) / math.sqrt(self.att_dim)
+        out = torch.matmul(F.softmax(Q_K, dim=-1), values) # shape --> [freq, batch, ch*time]
+        out = out.reshape(freq, batch, ch, time).permute(1, 0, 2, 3) # shape --> [batch, freq, ch, time]
         return out
 
     def forward(self, x):
         # x.shape --> [batch, ch, freq, time]
+        x = x.permute(0, 2, 1, 3) # shape --> [batch, freq, ch, time]
         query = self.conv_query(x)
         keys = self.conv_keys(x)
         values = self.conv_values(x)
-        out = self._attention(query, keys, values) # shape --> [batch, ch, freq, time]
-        out = out.permute(0, 2, 1, 3) # shape --> [batch, freq, ch, time]
+        out = self._attention(query, keys, values) # shape --> [batch, freq, ch, time]
         return out
 
 
@@ -88,7 +94,7 @@ class MultiHeadAttention(nn.Module):
         for i in range(self.num_heads):
             self.attention_heads.append(SelfAttention(att_dim=self.att_dim))
         # multi-head:
-        self.multi_head_conv = nn.Conv2d((513+256)*self.num_heads, 513, kernel_size=3, padding=1)
+        self.multi_head_conv = nn.Conv2d(self.att_dim*self.num_heads, 513, kernel_size=3, padding=1)
 
     def forward(self, x, refer_emb):
         x = torch.cat([x, refer_emb], dim=2) # shape --> [batch, ch, freq, time]
@@ -96,7 +102,8 @@ class MultiHeadAttention(nn.Module):
         # Multi-Head Attention:
         head_outs = []
         for head_idx in range(self.num_heads):
-            head_outs.append(self.attention_heads[head_idx](x))
-        out = self.multi_head_conv(torch.cat(head_outs, dim=1))
+            head_outs.append(self.attention_heads[head_idx](x)) # shape --> [batch, freq, ch, time]
+        out = self.multi_head_conv(torch.cat(head_outs, dim=1)) # shape --> [batch, freq, ch, time]
+        out = out.permute(0, 2, 1, 3)
         return out
 
