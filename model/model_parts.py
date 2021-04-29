@@ -54,9 +54,9 @@ class SelfAttention(nn.Module):
         super(SelfAttention, self).__init__()
         self.att_dim = att_dim
         self.num_heads = num_heads
-        self.conv_query = nn.Linear(301, 301)
-        self.conv_keys = nn.Linear(301, 301)
-        self.conv_values = nn.Linear(301, 301)
+        self.conv_query = nn.Linear(513+256, self.att_dim)
+        self.conv_keys = nn.Linear(513+256, self.att_dim)
+        self.conv_values = nn.Linear(513+256, self.att_dim)
         self.attention = nn.MultiheadAttention(embed_dim=self.att_dim, num_heads=self.num_heads)
 
     def _attention(self, query, keys, values):
@@ -68,18 +68,20 @@ class SelfAttention(nn.Module):
         return out
 
     def forward(self, x):
-        x = x.permute(0, 2, 1)
-        query = self.conv_query(x).permute(2, 0, 1)
-        keys = self.conv_keys(x).permute(2, 0, 1)
-        values = self.conv_values(x).permute(2, 0, 1)
-        print(query.shape)
-        out, _ = self.attention(query, keys, values)
-        print(out.shape)
+        batch, ch, freq, time = x.size()
+        # x.shape --> [batch, ch, freq, time]
+        x = x.permute(0, 1, 3, 2) # shape --> [batch, ch, time, freq]
+        x = x.reshape(-1, x.size(3)) # shape --> [batch*ch*time, freq]
+        query = self.conv_query(x).reshape(batch, -1 ,self.att_dim).permute(1, 0, 2)
+        keys = self.conv_keys(x).reshape(batch, -1 ,self.att_dim).permute(1, 0, 2)
+        values = self.conv_values(x).reshape(batch, -1 ,self.att_dim).permute(1, 0, 2)
+        out, _ = self.attention(query, keys, values) # shape --> [ch*time, batch, freq]
+        out = out.reshape(ch, time, batch, self.att_dim).permute(2, 3, 0, 1) # shape --> [batch, freq, ch, time]
         return out
 
 
 class MultiHeadAttention(nn.Module):
-    def __init__(self, block_idx, att_dim=49216, num_heads=2):
+    def __init__(self, block_idx, att_dim=64, num_heads=2):
         super(MultiHeadAttention, self).__init__()
         # Multi-Head Attention parameters:
         self.att_dim = att_dim
@@ -88,14 +90,14 @@ class MultiHeadAttention(nn.Module):
         self.dilation_cnn = DilationCNN(block_idx)
         # Attention:
         self.attention = SelfAttention(att_dim=self.att_dim, num_heads=self.num_heads)
+        self.multi_head_conv = nn.Conv2d(self.att_dim, 513, kernel_size=3, padding=1)
 
 
     def forward(self, x, refer_emb):
         x = torch.cat([x, refer_emb], dim=2)
         x = self.dilation_cnn(x) # shape --> [batch, ch, freq, time]
-        x = x.permute(0, 3, 1, 2).reshape(x.size(0), x.size(3), x.size(1)*x.size(2)) # shape --> [batch, time, ch*freq]
         # Multi-Head Attention:
-        out, _ = self.attention(x)
-        print(out.shape)
+        out = self.attention(x) # shape --> [batch, freq, ch, time]
+        out = self.multi_head_conv(out).permute(0, 2, 1, 3) # shape --> [batch, ch, freq, time]
         return out
 

@@ -54,7 +54,7 @@ def save_model(epoch):
 
 
 # init dataloader
-train_loader = Loader(batch_size=2, num_workers=8)
+train_loader = Loader(batch_size=1, num_workers=8)
 
 
 # init optimizer
