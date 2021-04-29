@@ -53,9 +53,9 @@ class SelfAttention(nn.Module):
     def __init__(self, att_dim=64):
         super(SelfAttention, self).__init__()
         self.att_dim = att_dim
-        self.conv_query = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=True)
-        self.conv_keys = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=True)
-        self.conv_values = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=True)
+        self.conv_query = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=False)
+        self.conv_keys = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=False)
+        self.conv_values = nn.Conv2d(self.att_dim, self.att_dim, kernel_size=1, bias=False)
 
     def _attention(self, query, keys, values):
         '''
@@ -65,11 +65,13 @@ class SelfAttention(nn.Module):
         out = torch.matmul(F.softmax(Q_K, dim=1), values)
         return out
 
-    def forward(self, query, keys, values):
-        query = self.conv_query(query)
-        keys = self.conv_keys(keys)
-        values = self.conv_values(values)
-        out = self._attention(query, keys, values)
+    def forward(self, x):
+        # x.shape --> [batch, ch, freq, time]
+        query = self.conv_query(x)
+        keys = self.conv_keys(x)
+        values = self.conv_values(x)
+        out = self._attention(query, keys, values) # shape --> [batch, ch, freq, time]
+        out = out.permute(0, 2, 1, 3) # shape --> [batch, freq, ch, time]
         return out
 
 
@@ -81,28 +83,20 @@ class MultiHeadAttention(nn.Module):
         self.num_heads = num_heads
         # Dilation CNN:
         self.dilation_cnn = DilationCNN(block_idx)
-        # to get Q, K, V:
-        self.conv_query = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=True)
-        self.conv_keys = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=True)
-        self.conv_values = nn.Conv2d(513+256, self.att_dim, kernel_size=1, bias=True)
         # list of attention heads:
         self.attention_heads = nn.ModuleList()
         for i in range(self.num_heads):
             self.attention_heads.append(SelfAttention(att_dim=self.att_dim))
         # multi-head:
-        self.multi_head_conv = nn.Conv2d(self.att_dim * self.num_heads, 513, kernel_size=3, padding=1)
+        self.multi_head_conv = nn.Conv2d((513+256)*self.num_heads, 513, kernel_size=3, padding=1)
 
     def forward(self, x, refer_emb):
-        x = torch.cat([x, refer_emb], dim=2)
-        x = self.dilation_cnn(x).permute(0, 2, 1, 3) # shape --> [batch, freq, ch, time]
-        # get Q, K, V:
-        query = self.conv_query(x)
-        keys = self.conv_keys(x)
-        values = self.conv_values(x)
+        x = torch.cat([x, refer_emb], dim=2) # shape --> [batch, ch, freq, time]
+        x = self.dilation_cnn(x) # shape --> [batch, ch, freq, time]
         # Multi-Head Attention:
         head_outs = []
         for head_idx in range(self.num_heads):
-            head_outs.append(self.attention_heads[head_idx](query, keys, values))
-        out = self.multi_head_conv(torch.cat(head_outs, dim=1)).permute(0, 2, 1, 3)
+            head_outs.append(self.attention_heads[head_idx](x))
+        out = self.multi_head_conv(torch.cat(head_outs, dim=1))
         return out
 
